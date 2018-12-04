@@ -1,6 +1,5 @@
 package com.garthskidstuff.jpegsimpleapp;
 
-import android.app.LauncherActivity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,82 +19,102 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity
 {
 
     private static final String TAG = "MainActivity";
+    private static final int PICK_IMAGE_A = 1;
+    private static final int PICK_IMAGE_B = 2;
+
     private View mainView;
+    private Uri aUri;
+    private Uri bUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mainView = findViewById(R.id.)
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        mainView = toolbar;
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View view)
-            {
-                File ab = new File ("AB.jpg");
-                if(ab.exists())
+        FloatingActionButton fabA = findViewById(R.id.fabA);
+        fabA.setOnClickListener(
+                new View.OnClickListener()
                 {
-                    ab.delete();
-                }
+                    @Override
+                    public void onClick(View view)
+                    {
 
-                try (OutputStream abStream = new FileOutputStream("AB.jpg");
-                     InputStream aStream = new FileInputStream("A.jpg");
-                     InputStream bStream = new FileInputStream("B.jpg"))
+                        Intent intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        startActivityForResult(Intent.createChooser(intent, "Select Picture"),
+                                               PICK_IMAGE_A);
+                    }
+                });
+
+        FloatingActionButton fabB = findViewById(R.id.fabB);
+        fabB.setOnClickListener(
+                new View.OnClickListener()
                 {
-                    Bitmap a = BitmapFactory.decodeStream(aStream);
-                    Bitmap b = BitmapFactory.decodeStream(bStream);
-                    int width = a.getWidth() + b.getWidth();
-                    int height = a.getHeight() + b.getHeight();
-                    Bitmap ab = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                    Canvas canvas = new Canvas(ab);
-                    canvas.drawBitmap(a,null, new Rect(0,0, a.getWidth(), a.getHeight()), null );
-                    canvas.drawBitmap(b,null, new Rect(a.getWidth(), a.getHeight(), width, height), null );
-                    ab.compress(Bitmap.CompressFormat.JPEG, 100, abStream);
-                }
-                catch (IOException e)
+                    @Override
+                    public void onClick(View view)
+                    {
+
+                        Intent intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        startActivityForResult(Intent.createChooser(intent, "Select Picture"),
+                                               PICK_IMAGE_B);
+                    }
+                });
+
+        FloatingActionButton fabAB = findViewById(R.id.fabAB);
+        fabAB.setOnClickListener(
+                new View.OnClickListener()
                 {
-                    e.printStackTrace();
-                }
-
-                try () {
-                    File a = new File("A.jpg");
-                    File b = new File("B.jpg");
-                    ArrayList<File> files = new ArrayList();
-                    if (a.exists())
+                    @Override
+                    public void onClick(View view)
                     {
-                        files.add(a);
+                        try (FileOutputStream abStream  = openFileOutput("AB.jpg", 0);
+                             InputStream aStream    = getContentResolver().openInputStream(aUri);
+                             InputStream bStream    = getContentResolver().openInputStream(bUri))
+                        {
+                            Bitmap a = BitmapFactory.decodeStream(aStream);
+                            Bitmap b = BitmapFactory.decodeStream(bStream);
+                            int width = a.getWidth() + b.getWidth();
+                            int height = a.getHeight() + b.getHeight();
+                            Bitmap ab = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                            Canvas canvas = new Canvas(ab);
+                            canvas.drawBitmap(a, null,
+                                              new Rect(0, 0, a.getWidth(), a.getHeight()),
+                                              null);
+                            canvas.drawBitmap(b, null,
+                                              new Rect(a.getWidth(), a.getHeight(), width, height),
+                                              null);
+                            ab.compress(Bitmap.CompressFormat.JPEG, 100, abStream);
+                            Uri abUri = Uri.fromFile(getFileStreamPath("AB.jpg"));
+                            share(abUri);
+                        }
+                        catch (FileNotFoundException e)
+                        {
+                            e.printStackTrace();
+                        }
+                        catch (IOException e)
+                        {
+                            e.printStackTrace();
+                        }
                     }
-                    if (b.exists())
-                    {
-                        files.add(b);
-                    }
-                    if (ab.exists())
-                    {
-                        files.add(ab);
-                    }
-
-                    share(files);
-                }
-            }
-        });
+                });
     }
 
     @Override
@@ -123,61 +142,85 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void share(final List<File> files)
+    private void share(Uri abUri)
     {
-        final int num = files.size();
-
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(getString(R.string.share));
-        StringBuilder sb = new StringBuilder();
-        for(File file : files)
+        if (null != abUri && null != aUri && null != bUri)
         {
-            sb.append(file.getName() + " ");
-        }
-        sb.append(": OK?");
-        builder.setMessage(sb.toString());
-        builder.setNegativeButton(android.R.string.cancel, null);
-        builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
-        {
-            @Override
-            public void onClick(DialogInterface dialog, int which)
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle(getString(R.string.share));
+            StringBuilder sb = new StringBuilder();
+            sb.append(aUri + ", " + bUri + ", " + abUri + ": OK?");
+            final ArrayList<Uri> imageUris = new ArrayList<>();
+            imageUris.add(aUri);
+            imageUris.add(bUri);
+            imageUris.add(abUri);
+            builder.setMessage(sb.toString());
+            builder.setNegativeButton(android.R.string.cancel, null);
+            builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
             {
-                if (!files.isEmpty())
+                @Override
+                public void onClick(DialogInterface dialog, int which)
                 {
-                    final ArrayList<Uri> imageUris = new ArrayList<>();
-                    for (File file : files)
+                        try
+                        {
+                            MediaScannerConnection
+                                    .scanFile(MainActivity.this, new String[]{imageUris.toString()},
+                                              null, new MediaScannerConnection.OnScanCompletedListener()
+                                            {
+                                                public void onScanCompleted(String path, Uri uri)
+                                                {
+                                                    Intent shareIntent = new Intent();
+                                                    shareIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+                                                    shareIntent.putParcelableArrayListExtra(
+                                                            Intent.EXTRA_STREAM, imageUris);
+                                                    shareIntent.setType("*/*");
+                                                    MainActivity.this.startActivity(
+                                                            Intent.createChooser(shareIntent,
+                                                                                 "share files to"));
+                                                }
+                                            });
+                            Snackbar.make(mainView, "Shared a, b, and ab files?", Snackbar.LENGTH_LONG);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.e(TAG, "Upload Error:" + e);
+                        }
+                    }
+                });
+        builder.show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode)
+        {
+            case PICK_IMAGE_A:
+                //fallthrough
+            case PICK_IMAGE_B:
+                if (resultCode == RESULT_OK && data != null && data.getData() != null)
+                {
+                    Uri uri = data.getData();
+                    if(null == uri)
                     {
-                        imageUris.add(Uri.fromFile(file));
+                        Log.e(TAG, "onActivityResult: ", new NullPointerException("uri"));
                     }
 
-                    try
+                    if (PICK_IMAGE_A == requestCode)
                     {
-                        MediaScannerConnection
-                                .scanFile(MainActivity.this, new String[]{imageUris.toString()},
-                                          null, new MediaScannerConnection.OnScanCompletedListener()
-                                        {
-                                            public void onScanCompleted(String path, Uri uri)
-                                            {
-                                                Intent shareIntent = new Intent();
-                                                shareIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-                                                shareIntent.putParcelableArrayListExtra(
-                                                        Intent.EXTRA_STREAM, imageUris);
-                                                shareIntent.setType("*/*");
-                                                MainActivity.this.startActivity(
-                                                        Intent.createChooser(shareIntent,
-                                                                "share files to"));
-                                            }
-                                        });
-                        String msg = "Shared " ++ files.size() ++ "file(s)?";
-                        Snackbar.make(mainView, msg, Snackbar.LENGTH_LONG);
+                        aUri = uri;
                     }
-                    catch (Exception e)
+                    else
                     {
-                        Log.e(TAG, "Upload Error:" + e);
+                        bUri = uri;
                     }
                 }
-            }
-        });
-        builder.show();
+                break;
+            default:
+                throw new InvalidParameterException();
+        }
     }
 }
