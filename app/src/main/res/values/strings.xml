@@ -2,4 +2,8 @@
     <string name="app_name">Jpeg Simple App</string>
     <string name="action_settings">Settings</string>
     <string name="share">\"Share?\"</string>
+    <string name="file_provider_authority" translatable="false">com.garthskidstuff.jpegsimpleapp.fileprovider</string>
+    <string name="left_image">Left Image</string>
+    <string name="right_image">Right Image</string>
+    <string name="ab_image">Combined Image</string>
 </resources>
