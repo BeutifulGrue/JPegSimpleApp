@@ -38,6 +38,7 @@ enum ImproperOrientation
     {
         Log.d(TAG, "normalizeOrientation: " + this + bitmap);
         Matrix matrix = new Matrix();
+        Bitmap newBitmap = null;
         int xCenter = bitmap.getWidth() / 2;
         int yCenter = bitmap.getHeight() / 2;
         switch(this)
@@ -46,8 +47,7 @@ enum ImproperOrientation
             case ORIENTATION_UNKNOWN:
                 throw new IllegalArgumentException();
             case ORIENTATION_NORMAL:
-                //do nothing
-                break;
+                newBitmap = bitmap; //the bitmap is already "normalized".
             case ORIENTATION_FLIPPED_HORIZONTAL:
                 matrix.postScale(-1, 1, xCenter, yCenter);
                 break;
@@ -73,6 +73,14 @@ enum ImproperOrientation
                 break;
         }
 
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        // If the orientation is normal, don't create a new bitmap
+        if (null == newBitmap)
+        {
+            newBitmap = Bitmap
+                    .createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            bitmap.recycle();
+        }
+
+        return newBitmap;
     }
 }

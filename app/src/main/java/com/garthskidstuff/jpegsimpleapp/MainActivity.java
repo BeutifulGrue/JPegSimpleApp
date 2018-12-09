@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -52,10 +53,7 @@ public class MainActivity extends AppCompatActivity
 
     private File bFile;
 
-    // Used in share
-    private Uri aUri;
-
-    private Uri bUri;
+    private File imageDir;
 
 
     @Override
@@ -67,10 +65,14 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        imageDir = new File(getFilesDir(), "images/");
+        //noinspection ResultOfMethodCallIgnored
+        imageDir.mkdir();
+
         aView = findViewById(R.id.aImage);
-        aFile = new File(getCacheDir(), "A.jpg");
+        aFile = new File(imageDir, "A.jpg");
         bView = findViewById(R.id.bImage);
-        bFile = new File(getCacheDir(), "B.jpg");
+        bFile = new File(imageDir, "B.jpg");
         abView = findViewById(R.id.abImage);
 
         FloatingActionButton fabA = findViewById(R.id.fabA);
@@ -110,26 +112,16 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view)
             {
-
-                File abFile = new File(getDataDir(), "AB.jpg");
-                try (OutputStream abStream = new FileOutputStream(
-                        abFile.getPath()); InputStream aStream = getContentResolver()
-                        .openInputStream(
-                                Uri.fromFile(aFile)); InputStream bStream = getContentResolver()
-                        .openInputStream(Uri.fromFile(bFile)))
+                File abFile = new File(imageDir, "AB.jpg");
+                abFile.delete(); // So we know if we made
+                try (OutputStream abStream = new FileOutputStream(abFile.getPath());
+                     InputStream aStream = getContentResolver().openInputStream(Uri.fromFile(aFile));
+                     InputStream bStream = getContentResolver().openInputStream(Uri.fromFile(bFile)))
                 {
                     Bitmap a = BitmapFactory.decodeStream(aStream);
                     Bitmap b = BitmapFactory.decodeStream(bStream);
                     ImageInfo aInfo = new ImageInfo(aStream);
                     ImageInfo bInfo = new ImageInfo(bStream);
-
-                    Bitmap tmp;
-                    tmp = aInfo.normalizeOrientation(a);
-                    a.recycle();
-                    a = tmp;
-                    tmp = bInfo.normalizeOrientation(b);
-                    b.recycle();
-                    b = tmp;
 
                     int width = a.getWidth() + b.getWidth();
                     int height = Integer.max(a.getHeight(), b.getHeight());
@@ -141,34 +133,23 @@ public class MainActivity extends AppCompatActivity
                     Log.w(TAG, "onClick: newFile.exists():" + abFile.exists());
                     ab.compress(JPEG, 100, abStream);
                     abStream.close();
+                    ImageInfo.MergeAndWrite(aInfo, bInfo, abFile);
+
                     Uri abUri = Uri.fromFile(abFile);
                     Log.d(TAG, "onClick: " + abUri.toString());
                     abView.setImageURI(null);
                     abView.setImageURI(abUri);
+                    share(abFile);
 
-                    // TODO: 12/8/18 ImageInfo.MergeAndWrite(aFile, bFile, abFile);
-
-                } catch (FileNotFoundException e)
+                }
+                catch (FileNotFoundException e)
                 {
                     Log.e(TAG, "onClick: FileNotFound", e);
-                } catch (IOException e)
+                }
+                catch (IOException e)
                 {
                     Log.e(TAG, "onClick: ", e);
                 }
-
-                if (abFile.exists())
-                {
-//                            Uri photoURI =
-//                                    FileProvider.getUriForFile(
-//                                            MainActivity.this,
-//                                            getString(
-//                                                R.string.file_provider_authority),
-//                                                abFile.getAbsoluteFile());
-//                            share(photoURI);
-//                            abFile.delete();
-                }
-
-
             }
         });
     }
@@ -199,54 +180,63 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void share(final Uri abUri)
+    private void share(final File abFile)
     {
-        if (null != abUri && null != aUri && null != bUri)
-        {
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle(getString(R.string.share));
-            StringBuilder sb = new StringBuilder();
-            sb.append("Send left right and merged?");
-            final ArrayList<Uri> imageUris = new ArrayList<>();
-            imageUris.add(aUri);
-            imageUris.add(bUri);
-            imageUris.add(abUri);
-            builder.setMessage(sb.toString());
-            builder.setNegativeButton(android.R.string.cancel, null);
-            builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
-            {
-                @Override
-                public void onClick(DialogInterface dialog, int which)
-                {
-                    final ArrayList<Uri> imageUris = new ArrayList<>();
-                    imageUris.add(abUri);
+        Uri aUri = FileProvider.getUriForFile(
+                MainActivity.this,
+                        getString(R.string.file_provider_authority),
+                        aFile);
+        Uri bUri = FileProvider.getUriForFile(
+                        MainActivity.this,
+                        getString(R.string.file_provider_authority),
+                        bFile);
+        Uri abUri = FileProvider.getUriForFile(
+                        MainActivity.this,
+                        getString(R.string.file_provider_authority),
+                        abFile);
 
-                    try
-                    {
-                        MediaScannerConnection
-                                .scanFile(MainActivity.this, new String[]{imageUris.toString()},
-                                        null, new MediaScannerConnection.OnScanCompletedListener()
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.share));
+        StringBuilder sb = new StringBuilder();
+        sb.append("Send left right and merged?");
+        final ArrayList<Uri> imageUris = new ArrayList<>();
+        imageUris.add(aUri);
+        imageUris.add(bUri);
+        imageUris.add(abUri);
+        builder.setMessage(sb.toString());
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+
+                try
+                {
+                    MediaScannerConnection
+                            .scanFile(MainActivity.this, new String[]{imageUris.toString()},
+                                    null, new MediaScannerConnection.OnScanCompletedListener()
+                                    {
+                                        public void onScanCompleted(String path, Uri uri)
                                         {
-                                            public void onScanCompleted(String path, Uri uri)
-                                            {
-                                                Intent shareIntent = new Intent();
-                                                shareIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-                                                shareIntent.putParcelableArrayListExtra(
-                                                        Intent.EXTRA_STREAM, imageUris);
-                                                shareIntent.setType("*/*");
-                                                MainActivity.this.startActivity(
-                                                        Intent.createChooser(shareIntent,
-                                                                "Share files to"));
-                                            }
-                                        });
-                    } catch (Exception e)
-                    {
-                        Log.e(TAG, "Upload Error:" + e);
-                    }
+                                            Intent shareIntent = new Intent();
+                                            shareIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+                                            shareIntent.putParcelableArrayListExtra(
+                                                    Intent.EXTRA_STREAM, imageUris);
+                                            shareIntent.setType("*/*");
+                                            MainActivity.this.startActivity(
+                                                    Intent.createChooser(shareIntent,
+                                                            "Share files to"));
+                                        }
+                                    });
                 }
-            });
-            builder.show();
-        }
+                catch (Exception e)
+                {
+                    Log.e(TAG, "Upload Error:" + e);
+                }
+            }
+        });
+        builder.show();
     }
 
     @Override
@@ -268,9 +258,8 @@ public class MainActivity extends AppCompatActivity
                     }
                     else
                     {
-                        try (InputStream stream1 = getContentResolver()
-                                .openInputStream(uri); InputStream stream2 = getContentResolver()
-                                .openInputStream(uri))
+                        try (InputStream stream1 = getContentResolver().openInputStream(uri);
+                             InputStream stream2 = getContentResolver().openInputStream(uri))
                         {
                             Boolean isA = PICK_IMAGE_A == requestCode;
                             ImageInfo info = new ImageInfo(stream1);

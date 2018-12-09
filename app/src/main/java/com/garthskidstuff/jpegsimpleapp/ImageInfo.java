@@ -15,6 +15,7 @@ import java.io.InputStreamReader;
 import static android.media.ExifInterface.TAG_IMAGE_DESCRIPTION;
 import static android.media.ExifInterface.TAG_ORIENTATION;
 import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.ORIENTATION_NORMAL;
+import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.ORIENTATION_UNKNOWN;
 import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.fromCode;
 import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.getCode;
 
@@ -36,7 +37,11 @@ public class ImageInfo
 
     public ImageInfo(ImageInfo aInfo, ImageInfo bInfo)
     {
+        ImproperOrientation aOr = aInfo.orientation;
+        ImproperOrientation bOr = bInfo.orientation;
+        orientation = aOr == bOr? aOr : ORIENTATION_UNKNOWN;
     }
+
 
     private void readSpikeFile(File jpg) throws IOException
     {
@@ -63,7 +68,7 @@ public class ImageInfo
         ExifInterface abExif = new ExifInterface(jpg.getAbsolutePath());
         abExif.setAttribute(TAG_IMAGE_DESCRIPTION, imageDescription);
         abExif.setAttribute(TAG_ORIENTATION, String.valueOf(orientation));
-        // TODO: 12/8/18 write info into exif
+        // TODO: 12/8/18 Other attributes?
 
         abExif.saveAttributes();
     }
