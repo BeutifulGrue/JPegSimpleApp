@@ -11,6 +11,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import static android.media.ExifInterface.TAG_IMAGE_DESCRIPTION;
 import static android.media.ExifInterface.TAG_ORIENTATION;
@@ -40,6 +42,10 @@ public class ImageInfo
         ImproperOrientation aOr = aInfo.orientation;
         ImproperOrientation bOr = bInfo.orientation;
         orientation = aOr == bOr? aOr : ORIENTATION_UNKNOWN;
+        List<String> descriptions = new ArrayList<>();
+        descriptions.add(aInfo.imageDescription);
+        descriptions.add(bInfo.imageDescription);
+        imageDescription = descriptions.toString();
     }
 
 
