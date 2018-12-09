@@ -31,6 +31,8 @@ import java.io.OutputStream;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 
+import static android.graphics.Bitmap.CompressFormat.JPEG;
+
 public class MainActivity extends AppCompatActivity
 {
 
@@ -38,12 +40,16 @@ public class MainActivity extends AppCompatActivity
     private static final int PICK_IMAGE_A = 1;
     private static final int PICK_IMAGE_B = 2;
 
+    private ImageView aView;
+    private ImageView bView;
+    private ImageView abView;
+    private File aFile;
+    private File bFile;
+
+    // Used in share
     private Uri aUri;
     private Uri bUri;
 
-    ImageView aView;
-    ImageView bView;
-    ImageView abView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -54,8 +60,10 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        aView = findViewById(R.id.aImage);;
+        aView = findViewById(R.id.aImage);
+        aFile = new File(getCacheDir(), "A.jpg");
         bView = findViewById(R.id.bImage);
+        bFile = new File(getCacheDir(), "B.jpg");
         abView = findViewById(R.id.abImage);
 
         int mCount = 0;
@@ -93,8 +101,6 @@ public class MainActivity extends AppCompatActivity
                 });
 
         FloatingActionButton fabAB = findViewById(R.id.fabAB);
-        final int count = mCount;
-        mCount++;
         fabAB.setOnClickListener(
                 new View.OnClickListener()
                 {
@@ -103,13 +109,25 @@ public class MainActivity extends AppCompatActivity
                     public void onClick(View view)
                     {
 
-                        File abFile = new File(getDataDir(), "AB" + count +".jpg");
+                        File abFile = new File(getDataDir(), "AB.jpg");
                         try (OutputStream abStream = new FileOutputStream(abFile.getPath());
-                             InputStream aStream    = getContentResolver().openInputStream(aUri);
-                             InputStream bStream    = getContentResolver().openInputStream(bUri))
+                             InputStream aStream = getContentResolver().openInputStream(Uri.fromFile(aFile));
+                             InputStream bStream = getContentResolver().openInputStream(Uri.fromFile(bFile))
+                            )
                         {
                             Bitmap a = BitmapFactory.decodeStream(aStream);
                             Bitmap b = BitmapFactory.decodeStream(bStream);
+                            ImageInfo aInfo = new ImageInfo(aStream);
+                            ImageInfo bInfo = new ImageInfo(bStream);
+
+                            Bitmap tmp;
+                            tmp = aInfo.normalizeOrientation(a);
+                            a.recycle();
+                            a = tmp;
+                            tmp = bInfo.normalizeOrientation(b);
+                            b.recycle();
+                            b = tmp;
+
                             int width = a.getWidth() + b.getWidth();
                             int height = Integer.max(a.getHeight(), b.getHeight());
                             Bitmap ab = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -121,7 +139,7 @@ public class MainActivity extends AppCompatActivity
                                               new Rect(a.getWidth(), 0, width, b.getHeight()),
                                               null);
                             Log.w(TAG, "onClick: newFile.exists():" + abFile.exists());
-                            ab.compress(Bitmap.CompressFormat.JPEG, 100, abStream);
+                            ab.compress(JPEG, 100, abStream);
                             abStream.close();
                             Uri abUri = Uri.fromFile(abFile);
                             Log.d(TAG, "onClick: " + abUri.toString());
@@ -141,8 +159,8 @@ public class MainActivity extends AppCompatActivity
                             Log.e(TAG, "onClick: ", e);
                         }
 
-//                        if (abFile.exists())
-//                        {
+                        if (abFile.exists())
+                        {
 //                            Uri photoURI =
 //                                    FileProvider.getUriForFile(
 //                                            MainActivity.this,
@@ -151,12 +169,13 @@ public class MainActivity extends AppCompatActivity
 //                                                abFile.getAbsoluteFile());
 //                            share(photoURI);
 //                            abFile.delete();
-//                        }
+                        }
 
 
                     }
                 });
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
@@ -190,10 +209,10 @@ public class MainActivity extends AppCompatActivity
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle(getString(R.string.share));
             StringBuilder sb = new StringBuilder();
-            sb.append(aUri + ", " + bUri + ", " + abUri + ": OK?");
+            sb.append( "Send left right and merged?");
             final ArrayList<Uri> imageUris = new ArrayList<>();
-            imageUris.add(aUri);
-            imageUris.add(bUri);
+            imageUris.add(aNormalized);
+            imageUris.add(bNormalized);
             imageUris.add(abUri);
             builder.setMessage(sb.toString());
             builder.setNegativeButton(android.R.string.cancel, null);
@@ -253,15 +272,23 @@ public class MainActivity extends AppCompatActivity
                     }
                     else
                     {
-                        if (PICK_IMAGE_A == requestCode)
+
+                        try (InputStream stream = getContentResolver().openInputStream(uri))
                         {
-                            aUri = uri;
-                            aView.setImageURI(uri);
+                            Boolean isA = PICK_IMAGE_A == requestCode;
+                            Bitmap bitmap = BitmapFactory.decodeStream(stream);
+                            ImageInfo info = new ImageInfo(stream);
+                            Bitmap normalized = info.normalizeOrientation(bitmap);
+                            try (OutputStream out = new FileOutputStream(isA ? aFile : bFile))
+                            {
+                                normalized.compress(JPEG, 100, out);
+                            }
+                            ImageView view = isA ? aView : bView;
+                            view.setImageBitmap(normalized);
                         }
-                        else
+                        catch (IOException e)
                         {
-                            bUri = uri;
-                            bView.setImageURI(uri);
+                            e.printStackTrace();
                         }
                     }
                 }
