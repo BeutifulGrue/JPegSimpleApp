@@ -37,17 +37,24 @@ public class MainActivity extends AppCompatActivity
 {
 
     private static final String TAG = "MainActivity";
+
     private static final int PICK_IMAGE_A = 1;
+
     private static final int PICK_IMAGE_B = 2;
 
     private ImageView aView;
+
     private ImageView bView;
+
     private ImageView abView;
+
     private File aFile;
+
     private File bFile;
 
     // Used in share
     private Uri aUri;
+
     private Uri bUri;
 
 
@@ -67,98 +74,90 @@ public class MainActivity extends AppCompatActivity
         abView = findViewById(R.id.abImage);
 
         FloatingActionButton fabA = findViewById(R.id.fabA);
-        fabA.setOnClickListener(
-                new View.OnClickListener()
-                {
-                    @Override
-                    public void onClick(View view)
-                    {
+        fabA.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
 
-                        Intent intent = new Intent();
-                        intent.setType("image/*");
-                        intent.setAction(Intent.ACTION_GET_CONTENT);
-                        startActivityForResult(Intent.createChooser(intent, "Select Picture"),
-                                               PICK_IMAGE_A);
-                    }
-                });
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(Intent.createChooser(intent, "Select Picture"),
+                        PICK_IMAGE_A);
+            }
+        });
 
         FloatingActionButton fabB = findViewById(R.id.fabB);
-        fabB.setOnClickListener(
-                new View.OnClickListener()
-                {
-                    @Override
-                    public void onClick(View view)
-                    {
+        fabB.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
 
-                        Intent intent = new Intent();
-                        intent.setType("image/*");
-                        intent.setAction(Intent.ACTION_GET_CONTENT);
-                        startActivityForResult(Intent.createChooser(intent, "Select Picture"),
-                                               PICK_IMAGE_B);
-                    }
-                });
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(Intent.createChooser(intent, "Select Picture"),
+                        PICK_IMAGE_B);
+            }
+        });
 
         FloatingActionButton fabAB = findViewById(R.id.fabAB);
-        fabAB.setOnClickListener(
-                new View.OnClickListener()
+        fabAB.setOnClickListener(new View.OnClickListener()
+        {
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onClick(View view)
+            {
+
+                File abFile = new File(getDataDir(), "AB.jpg");
+                try (OutputStream abStream = new FileOutputStream(
+                        abFile.getPath()); InputStream aStream = getContentResolver()
+                        .openInputStream(
+                                Uri.fromFile(aFile)); InputStream bStream = getContentResolver()
+                        .openInputStream(Uri.fromFile(bFile)))
                 {
-                    @RequiresApi(api = Build.VERSION_CODES.N)
-                    @Override
-                    public void onClick(View view)
-                    {
+                    Bitmap a = BitmapFactory.decodeStream(aStream);
+                    Bitmap b = BitmapFactory.decodeStream(bStream);
+                    ImageInfo aInfo = new ImageInfo(aStream);
+                    ImageInfo bInfo = new ImageInfo(bStream);
 
-                        File abFile = new File(getDataDir(), "AB.jpg");
-                        try (OutputStream abStream = new FileOutputStream(abFile.getPath());
-                             InputStream aStream = getContentResolver().openInputStream(Uri.fromFile(aFile));
-                             InputStream bStream = getContentResolver().openInputStream(Uri.fromFile(bFile))
-                            )
-                        {
-                            Bitmap a = BitmapFactory.decodeStream(aStream);
-                            Bitmap b = BitmapFactory.decodeStream(bStream);
-                            ImageInfo aInfo = new ImageInfo(aStream);
-                            ImageInfo bInfo = new ImageInfo(bStream);
+                    Bitmap tmp;
+                    tmp = aInfo.normalizeOrientation(a);
+                    a.recycle();
+                    a = tmp;
+                    tmp = bInfo.normalizeOrientation(b);
+                    b.recycle();
+                    b = tmp;
 
-                            Bitmap tmp;
-                            tmp = aInfo.normalizeOrientation(a);
-                            a.recycle();
-                            a = tmp;
-                            tmp = bInfo.normalizeOrientation(b);
-                            b.recycle();
-                            b = tmp;
+                    int width = a.getWidth() + b.getWidth();
+                    int height = Integer.max(a.getHeight(), b.getHeight());
+                    Bitmap ab = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(ab);
+                    canvas.drawBitmap(a, null, new Rect(0, 0, a.getWidth(), a.getHeight()), null);
+                    canvas.drawBitmap(b, null, new Rect(a.getWidth(), 0, width, b.getHeight()),
+                            null);
+                    Log.w(TAG, "onClick: newFile.exists():" + abFile.exists());
+                    ab.compress(JPEG, 100, abStream);
+                    abStream.close();
+                    Uri abUri = Uri.fromFile(abFile);
+                    Log.d(TAG, "onClick: " + abUri.toString());
+                    abView.setImageURI(null);
+                    abView.setImageURI(abUri);
 
-                            int width = a.getWidth() + b.getWidth();
-                            int height = Integer.max(a.getHeight(), b.getHeight());
-                            Bitmap ab = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                            Canvas canvas = new Canvas(ab);
-                            canvas.drawBitmap(a, null,
-                                              new Rect(0, 0, a.getWidth(), a.getHeight()),
-                                              null);
-                            canvas.drawBitmap(b, null,
-                                              new Rect(a.getWidth(), 0, width, b.getHeight()),
-                                              null);
-                            Log.w(TAG, "onClick: newFile.exists():" + abFile.exists());
-                            ab.compress(JPEG, 100, abStream);
-                            abStream.close();
-                            Uri abUri = Uri.fromFile(abFile);
-                            Log.d(TAG, "onClick: " + abUri.toString());
-                            abView.setImageURI(null);
-                            abView.setImageURI(abUri);
+                    // TODO: 12/8/18 ImageInfo.MergeAndWrite(aFile, bFile, abFile);
 
+                } catch (FileNotFoundException e)
+                {
+                    Log.e(TAG, "onClick: FileNotFound", e);
+                } catch (IOException e)
+                {
+                    Log.e(TAG, "onClick: ", e);
+                }
 
-                            // TODO: 12/8/18 ImageInfo.MergeAndWrite(aFile, bFile, abFile);
-
-                        }
-                        catch (FileNotFoundException e)
-                        {
-                            Log.e(TAG, "onClick: FileNotFound", e);
-                        }
-                        catch (IOException e)
-                        {
-                            Log.e(TAG, "onClick: ", e);
-                        }
-
-                        if (abFile.exists())
-                        {
+                if (abFile.exists())
+                {
 //                            Uri photoURI =
 //                                    FileProvider.getUriForFile(
 //                                            MainActivity.this,
@@ -167,11 +166,11 @@ public class MainActivity extends AppCompatActivity
 //                                                abFile.getAbsoluteFile());
 //                            share(photoURI);
 //                            abFile.delete();
-                        }
+                }
 
 
-                    }
-                });
+            }
+        });
     }
 
 
@@ -207,7 +206,7 @@ public class MainActivity extends AppCompatActivity
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle(getString(R.string.share));
             StringBuilder sb = new StringBuilder();
-            sb.append( "Send left right and merged?");
+            sb.append("Send left right and merged?");
             final ArrayList<Uri> imageUris = new ArrayList<>();
             imageUris.add(aUri);
             imageUris.add(bUri);
@@ -226,7 +225,7 @@ public class MainActivity extends AppCompatActivity
                     {
                         MediaScannerConnection
                                 .scanFile(MainActivity.this, new String[]{imageUris.toString()},
-                                          null, new MediaScannerConnection.OnScanCompletedListener()
+                                        null, new MediaScannerConnection.OnScanCompletedListener()
                                         {
                                             public void onScanCompleted(String path, Uri uri)
                                             {
@@ -237,11 +236,10 @@ public class MainActivity extends AppCompatActivity
                                                 shareIntent.setType("*/*");
                                                 MainActivity.this.startActivity(
                                                         Intent.createChooser(shareIntent,
-                                                                             "Share files to"));
+                                                                "Share files to"));
                                             }
                                         });
-                    }
-                    catch (Exception e)
+                    } catch (Exception e)
                     {
                         Log.e(TAG, "Upload Error:" + e);
                     }
@@ -270,12 +268,13 @@ public class MainActivity extends AppCompatActivity
                     }
                     else
                     {
-
-                        try (InputStream stream = getContentResolver().openInputStream(uri))
+                        try (InputStream stream1 = getContentResolver()
+                                .openInputStream(uri); InputStream stream2 = getContentResolver()
+                                .openInputStream(uri))
                         {
                             Boolean isA = PICK_IMAGE_A == requestCode;
-                            Bitmap bitmap = BitmapFactory.decodeStream(stream);
-                            ImageInfo info = new ImageInfo(stream);
+                            ImageInfo info = new ImageInfo(stream1);
+                            Bitmap bitmap = BitmapFactory.decodeStream(stream2);
                             Log.d(TAG, "onActivityResult: " + info.orientation);
                             Bitmap normalized = info.normalizeOrientation(bitmap);
                             try (OutputStream out = new FileOutputStream(isA ? aFile : bFile))
@@ -284,8 +283,7 @@ public class MainActivity extends AppCompatActivity
                             }
                             ImageView view = isA ? aView : bView;
                             view.setImageBitmap(normalized);
-                        }
-                        catch (IOException e)
+                        } catch (IOException e)
                         {
                             e.printStackTrace();
                         }
