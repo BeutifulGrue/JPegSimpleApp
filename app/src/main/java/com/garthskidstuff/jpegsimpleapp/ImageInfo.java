@@ -14,6 +14,9 @@ import java.io.InputStreamReader;
 
 import static android.media.ExifInterface.TAG_IMAGE_DESCRIPTION;
 import static android.media.ExifInterface.TAG_ORIENTATION;
+import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.ORIENTATION_NORMAL;
+import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.fromCode;
+import static com.garthskidstuff.jpegsimpleapp.ImproperOrientation.getCode;
 
 public class ImageInfo
 {
@@ -50,7 +53,7 @@ public class ImageInfo
     private void readExif(ExifInterface exif)
     {
         imageDescription = exif.getAttribute(TAG_IMAGE_DESCRIPTION);
-        orientation = ImproperOrientation.fromCode(exif.getAttributeInt(TAG_ORIENTATION, 1));
+        orientation = fromCode(exif.getAttributeInt(TAG_ORIENTATION, getCode(ORIENTATION_NORMAL)));
 
         // TODO: 12/8/18 Other attributes?
     }
@@ -71,10 +74,18 @@ public class ImageInfo
         abInfo.WriteInfo(abFile);
     }
 
-    Bitmap normalizeOrientation(Bitmap bitmap) throws IllegalArgumentException
+    Bitmap normalizeOrientation(Bitmap bitmap)
     {
+        try
+        {
             Bitmap ret = orientation.normalizeOrientation(bitmap);
             orientation = ImproperOrientation.ORIENTATION_NORMAL;
             return ret;
+        }
+        catch (IllegalArgumentException e)
+        {
+            // We cant normalize (probably because we don't _have_ an orientation.)
+            return bitmap;
+        }
     }
 }

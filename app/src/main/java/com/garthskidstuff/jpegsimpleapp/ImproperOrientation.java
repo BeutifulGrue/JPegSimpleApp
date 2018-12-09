@@ -9,17 +9,12 @@ enum ImproperOrientation
     ORIENTATION_UNKNOWN(0),
     ORIENTATION_NORMAL(1), ORIENTATION_FLIPPED_HORIZONTAL(2), ORIENTATION_180(3), ORIENTATION_FLIPPED_VERTICALLY(4),
     ORIENTATION_TRANSPOSE(5), ORIENTATION_90(6), ORIENTATION_TRANSVERSE(7), ORIENTATION_270(8);
-    int code;
+    public final int code;
     private static final String TAG = "ImproperOrientation";
 
     ImproperOrientation(int i)
     {
         code = i;
-    }
-
-    public int getCode()
-    {
-        return code;
     }
 
     static ImproperOrientation fromCode(int i)
@@ -32,6 +27,11 @@ enum ImproperOrientation
             }
         }
         return ORIENTATION_UNKNOWN;
+    }
+
+    static int getCode(ImproperOrientation orientation)
+    {
+        return orientation.code;
     }
 
     public Bitmap normalizeOrientation(Bitmap bitmap) throws IllegalArgumentException

@@ -66,8 +66,6 @@ public class MainActivity extends AppCompatActivity
         bFile = new File(getCacheDir(), "B.jpg");
         abView = findViewById(R.id.abImage);
 
-        int mCount = 0;
-
         FloatingActionButton fabA = findViewById(R.id.fabA);
         fabA.setOnClickListener(
                 new View.OnClickListener()
@@ -211,8 +209,8 @@ public class MainActivity extends AppCompatActivity
             StringBuilder sb = new StringBuilder();
             sb.append( "Send left right and merged?");
             final ArrayList<Uri> imageUris = new ArrayList<>();
-            imageUris.add(aNormalized);
-            imageUris.add(bNormalized);
+            imageUris.add(aUri);
+            imageUris.add(bUri);
             imageUris.add(abUri);
             builder.setMessage(sb.toString());
             builder.setNegativeButton(android.R.string.cancel, null);
@@ -278,6 +276,7 @@ public class MainActivity extends AppCompatActivity
                             Boolean isA = PICK_IMAGE_A == requestCode;
                             Bitmap bitmap = BitmapFactory.decodeStream(stream);
                             ImageInfo info = new ImageInfo(stream);
+                            Log.d(TAG, "onActivityResult: " + info.orientation);
                             Bitmap normalized = info.normalizeOrientation(bitmap);
                             try (OutputStream out = new FileOutputStream(isA ? aFile : bFile))
                             {
